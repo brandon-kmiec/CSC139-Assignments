@@ -11,9 +11,11 @@
 #include <sys/wait.h>
 
 void processCmd(char**, int, char[]);
+void throwErrorMsg(int);
 
 int main(int argc, char* argv[]) {
-    char error_message[30] = "An error has occurred\n";
+
+    char path[] = "/bin/";
 
     char *userInputCmd = NULL;
     size_t size = 0;
@@ -41,7 +43,7 @@ int main(int argc, char* argv[]) {
                 continue;
             } // end if
             else {
-                processCmd(args, numArgs, error_message);
+                processCmd(args, numArgs, path);
             } // end else
         } // end while
     } // end if
@@ -67,31 +69,28 @@ int main(int argc, char* argv[]) {
                 continue;
             } // end if
             else {
-                processCmd(args, numArgs, error_message);
+                processCmd(args, numArgs, path);
             } // end else
         } // end while
+        fclose(fp);
     } // end else if
 
     // error for any other number of command line arguments
     else {
-        fprintf(stderr, error_message, strlen(error_message));
-        exit(1);
+        throwErrorMsg(1);
     } // end else
     return 0;
 }//end main
 
 
-void processCmd(char* args[], int numArgs, char error_message[]) {
-    char path[] = "/bin";
-
+void processCmd(char* args[], int numArgs, char path[]) {
     // exit the shell
     if(strcmp(args[0], "exit") == 0) {
         if(numArgs == 1) {
             exit(EXIT_SUCCESS);
         } // end if
         else {
-            fprintf(stderr, error_message, strlen(error_message));
-            exit(0);
+            throwErrorMsg(0);
         } // end else
     } // end if
 
@@ -103,14 +102,13 @@ void processCmd(char* args[], int numArgs, char error_message[]) {
             dir = args[1];
         } // end if
         else {
-            fprintf(stderr, error_message, strlen(error_message));
-            exit(0);
+            throwErrorMsg(0);
         } // end else
 
         chdir(dir);
     } // end else if
 
-    //path
+    // change path
     else if(strcmp(args[0], "path") == 0) {
         if(numArgs == 1) {
             strcpy(path, "");
@@ -123,38 +121,52 @@ void processCmd(char* args[], int numArgs, char error_message[]) {
         } // end else
     } // end else if
 
-    // list directory contents
+    // non built in commands
     else {
-        //if(strcmp(args[0], "ls") == 0) {
-        //char path[] = "/bin/";
+        
+        for(int i = 0; i < numArgs - 1; i++) {
+            if(strcmp(args[i], ">") == 0) {
+            } // end if
+        } // end for
+
         if(strcmp(args[0], "path") != 0) { 
             strncat(path, "/", 2);
             strncat(path, args[0], strlen(args[0]));
         } // end if        
-            int status;
-            pid_t pid;
-            pid = fork();
-            switch(pid) {
-                case -1:
-                    fprintf(stderr, error_message, strlen(error_message));
-                    exit(0);
-                case 0:
-                    if(execv(path, args) != 0) {
-                        fprintf(stderr, error_message, strlen(error_message));
-                        exit(0);
-                    } // end if
-                    break;
-                default:
-                    if(wait(&status) == -1) {
-                        fprintf(stderr, error_message, strlen(error_message));
-                        exit(0);
-                    } // end if
-                    break;
-            } // end switch
+
+        int status;
+        pid_t pid;
+        pid = fork();
+        switch(pid) {
+            case -1:
+                throwErrorMsg(0);
+            case 0:
+                if(execv(path, args) != 0) {
+                    throwErrorMsg(-1);
+                } // end if
+                break;
+            default:
+                if(wait(&status) == -1) {
+                    throwErrorMsg(0);
+                } // end if
+                break;
+        } // end switch
     } // end if
 
 
     //
 
     return;
-    } // end processCmd
+} // end processCmd
+
+
+void throwErrorMsg(int errCode) {
+    char error_message[30] = "An error has occurred\n";
+    fprintf(stderr, error_message, strlen(error_message));
+    if(errCode == -1) {
+        _exit(0);
+    } // end if
+    else {
+        exit(errCode);
+    } // end else
+} // end throwErrorMsg
