@@ -9,8 +9,10 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 void processCmd(char**, int, char[]);
+void redirect(int, char*[]);
 void throwErrorMsg(int);
 
 int main(int argc, char* argv[]) {
@@ -123,7 +125,8 @@ void processCmd(char* args[], int numArgs, char path[]) {
 
     // non built in commands
     else {
-        
+        redirect(numArgs, args);
+
         for(int i = 0; i < numArgs - 1; i++) {
             if(strcmp(args[i], ">") == 0) {
             } // end if
@@ -153,11 +156,81 @@ void processCmd(char* args[], int numArgs, char path[]) {
         } // end switch
     } // end if
 
-
-    //
-
     return;
 } // end processCmd
+
+
+void redirect(int numArgs, char* args[]) {
+    int outPos = 0; // position of out redirection (>)
+    int fd;         // file descriptor
+  
+    for(int i = 0; i < numArgs; i++) {
+        if(strcmp(args[i], ">") == 0) {
+            if(outPos != 0 || i == 0 || i == numArgs - 1) {
+                throwErrorMsg(-1);
+            } // end if
+            
+            if(strstr(args[i + 1], ".") && strstr(args[i + 2], ".") && i + 2 < numArgs) {
+                throwErrorMsg(0);
+            } // end if
+
+            outPos = i;
+        } // end if
+    } // end for
+
+    if(outPos != 0) {
+        if(args[outPos + 1] == NULL) {
+            throwErrorMsg(-1);
+        } // end if
+
+        fd = open(args[outPos + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+
+        if(fd == -1) {
+            throwErrorMsg(-1);
+        } // end if
+
+        dup2(fd, 1);
+
+        if(close(fd) == -1) {
+            throwErrorMsg(0);
+        } // end if
+
+        args[outPos] = NULL;
+    } // end if
+      
+    /*
+    for(int i = 0; i < numArgs; i++) {
+        if(strcmp(args[i], ">") == 0) {
+            if(i == 0 || i == numArgs - 1) {
+                throwErrorMsg(-1); // might need to be 0
+            } // end if
+            
+            if(strstr(args[i + 1], ".") && strstr(args[i + 2], ".") && i + 2 < numArgs) {
+                throwErrorMsg(0);
+            } // end if
+
+            outPos = i;
+
+            if(outPos != 0 && outPos != numArgs - 1) {
+                fd = open(args[outPos + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+                if(fd == -1) {
+                    throwErrorMsg(-1); // might need to be 0
+                } // end if
+
+                dup2(fd, 1);
+
+                if(close(fd) == -1) {
+                    throwErrorMsg(0);
+                } // end if
+
+                args[outPos] = NULL;
+            } // end if
+        } // end if
+
+    } // end for
+*/
+    return;
+} // end redirect
 
 
 void throwErrorMsg(int errCode) {
@@ -169,4 +242,6 @@ void throwErrorMsg(int errCode) {
     else {
         exit(errCode);
     } // end else
+
+    return;
 } // end throwErrorMsg
