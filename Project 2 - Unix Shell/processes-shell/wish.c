@@ -29,6 +29,28 @@ int main(int argc, char* argv[]) {
             printf("\nwish> ");
             getline(&userInputCmd, &size, stdin);
 
+            if(strstr(userInputCmd, ">") != NULL) {
+                int temp = 0;
+                char *tempStr[sizeof(userInputCmd)];
+                tempStr[temp] = strtok(userInputCmd, ">");
+                while(tempStr[temp] != NULL) {
+                    tempStr[++temp] = strtok((char *) 0, ">");
+                } // end while
+
+                //userInputCmd = NULL;
+                strcpy(userInputCmd, tempStr[0]);
+                strncat(userInputCmd, " > ", 4);
+                for(int i = i; i < temp; i++) {
+                    strncat(userInputCmd, tempStr[i], strlen(tempStr[i]));
+
+                    if(i < temp - 1) {
+                        strncat(userInputCmd, " > ", 4);
+                    } // end if
+                } // end for
+            } // end if
+
+            //printf("%s", userInputCmd);
+
             // get the number of arguments (numArgs) and store the arguments
             // in args 
             int numArgs = 0;
@@ -55,33 +77,63 @@ int main(int argc, char* argv[]) {
         // open the batch file and read line by line
         FILE *fp = fopen(argv[1], "r");
         while(getline(&userInputCmd, &size, fp) != -1) {
-            // get the number of arguments (numArgs) and store the arguments
-            // in args
-            int numArgs = 0;
-            char *delimeter = " \n\t";
-            char *args[sizeof(userInputCmd)];
-            args[numArgs] = strtok(userInputCmd, delimeter);
-            while(args[numArgs] != NULL) {
-                args[++numArgs] = strtok((char *) 0, delimeter);
-            } // end while
 
-            // continue looping if no command was entered
-            // else process the command
-            if(numArgs == 0) {
-                continue;
-            } // end if
-            else {
-                processCmd(args, numArgs, path);
-            } // end else
+            if(strstr(userInputCmd, ">") != NULL) {
+                char redirectStr[4] = " > ";
+
+                int temp = 0;
+                char *tempStr[strlen(userInputCmd)];
+                tempStr[temp] = strtok(userInputCmd, ">");
+                while(tempStr[temp] != NULL) {
+                    tempStr[++temp] = strtok(NULL, ">");
+                } // end while
+                
+                size_t newInCmdSize = strlen(tempStr[0]) + 1;
+                for(int i = 1; i < temp; i++) {
+                    newInCmdSize += strlen(redirectStr) + strlen(tempStr[i]);
+                } // end for
+
+                char *newInCmd = malloc(newInCmdSize);
+                if(newInCmd == NULL) {
+                    throwErrorMsg(0);
+                } // end if
+
+                strcpy(newInCmd, tempStr[0]);
+                for(int i = 1; i < temp; i++) {
+                    strcat(newInCmd, redirectStr);
+                    strcat(newInCmd, tempStr[i]);
+                } // end for
+                  
+                userInputCmd = newInCmd;              
+             } // end if
+
+        // get the number of arguments (numArgs) and store the arguments
+        // in args
+        int numArgs = 0;
+        char *delimeter = " \n\t";
+        char *args[sizeof(userInputCmd)];
+        args[numArgs] = strtok(userInputCmd, delimeter);
+        while(args[numArgs] != NULL) {
+            args[++numArgs] = strtok((char *) 0, delimeter);
         } // end while
-        fclose(fp);
-    } // end else if
 
-    // error for any other number of command line arguments
-    else {
-        throwErrorMsg(1);
-    } // end else
-    return 0;
+        // continue looping if no command was entered
+        // else process the command
+        if(numArgs == 0) {
+            continue;
+        } // end if
+        else {
+            processCmd(args, numArgs, path);
+        } // end else
+    } // end while
+    fclose(fp);
+} // end else if
+
+// error for any other number of command line arguments
+else {
+    throwErrorMsg(1);
+} // end else
+return 0;
 }//end main
 
 
@@ -123,15 +175,28 @@ void processCmd(char* args[], int numArgs, char path[]) {
         } // end else
     } // end else if
 
+    else if(strcmp(args[0], "cat") == 0) {
+        int i;
+        for(i = 1; i < numArgs; i++) {
+            FILE *fp2 = fopen(args[i], "r");
+            char *line = NULL;
+            size_t size = 0;
+
+            if(fp2 == NULL) {
+                throwErrorMsg(0);
+            } // end if
+            else {
+                while(getline(&line, &size, fp2) != -1) {
+                    fprintf(stdout, line, strlen(line));
+                } // end while
+            } // end else
+        } // end for
+    } // end else if
+
     // non built in commands
     else {
         redirect(numArgs, args);
-
-        for(int i = 0; i < numArgs - 1; i++) {
-            if(strcmp(args[i], ">") == 0) {
-            } // end if
-        } // end for
-
+        
         if(strcmp(args[0], "path") != 0) { 
             strncat(path, "/", 2);
             strncat(path, args[0], strlen(args[0]));
@@ -163,13 +228,13 @@ void processCmd(char* args[], int numArgs, char path[]) {
 void redirect(int numArgs, char* args[]) {
     int outPos = 0; // position of out redirection (>)
     int fd;         // file descriptor
-  
+    
     for(int i = 0; i < numArgs; i++) {
         if(strcmp(args[i], ">") == 0) {
             if(outPos != 0 || i == 0 || i == numArgs - 1) {
                 throwErrorMsg(-1);
             } // end if
-            
+
             if(strstr(args[i + 1], ".") && strstr(args[i + 2], ".") && i + 2 < numArgs) {
                 throwErrorMsg(0);
             } // end if
@@ -183,13 +248,14 @@ void redirect(int numArgs, char* args[]) {
             throwErrorMsg(-1);
         } // end if
 
+
         fd = open(args[outPos + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
         if(fd == -1) {
             throwErrorMsg(-1);
         } // end if
 
-        dup2(fd, 1);
+        dup2(1, fd);
 
         if(close(fd) == -1) {
             throwErrorMsg(0);
@@ -197,38 +263,38 @@ void redirect(int numArgs, char* args[]) {
 
         args[outPos] = NULL;
     } // end if
-      
+
     /*
-    for(int i = 0; i < numArgs; i++) {
-        if(strcmp(args[i], ">") == 0) {
-            if(i == 0 || i == numArgs - 1) {
-                throwErrorMsg(-1); // might need to be 0
-            } // end if
-            
-            if(strstr(args[i + 1], ".") && strstr(args[i + 2], ".") && i + 2 < numArgs) {
-                throwErrorMsg(0);
-            } // end if
+       for(int i = 0; i < numArgs; i++) {
+       if(strcmp(args[i], ">") == 0) {
+       if(i == 0 || i == numArgs - 1) {
+       throwErrorMsg(-1); // might need to be 0
+       } // end if
 
-            outPos = i;
+       if(strstr(args[i + 1], ".") && strstr(args[i + 2], ".") && i + 2 < numArgs) {
+       throwErrorMsg(0);
+       } // end if
 
-            if(outPos != 0 && outPos != numArgs - 1) {
-                fd = open(args[outPos + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-                if(fd == -1) {
-                    throwErrorMsg(-1); // might need to be 0
-                } // end if
+       outPos = i;
 
-                dup2(fd, 1);
+       if(outPos != 0 && outPos != numArgs - 1) {
+       fd = open(args[outPos + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+       if(fd == -1) {
+       throwErrorMsg(-1); // might need to be 0
+       } // end if
 
-                if(close(fd) == -1) {
-                    throwErrorMsg(0);
-                } // end if
+       dup2(fd, 1);
 
-                args[outPos] = NULL;
-            } // end if
-        } // end if
+       if(close(fd) == -1) {
+       throwErrorMsg(0);
+       } // end if
 
-    } // end for
-*/
+       args[outPos] = NULL;
+       } // end if
+       } // end if
+
+       } // end for
+       */
     return;
 } // end redirect
 
