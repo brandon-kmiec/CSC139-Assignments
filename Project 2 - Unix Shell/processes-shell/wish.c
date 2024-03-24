@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <errno.h>
+
+bool pathChanged = false;
 
 void processCmd(char**, int, char[]);
 void redirect(int, char*[]);
@@ -25,31 +28,38 @@ int main(int argc, char* argv[]) {
     // run interactive mode if one command line argument
     if(argc == 1) {
         while(true) {
-
+            
             printf("\nwish> ");
             getline(&userInputCmd, &size, stdin);
 
             if(strstr(userInputCmd, ">") != NULL) {
+                char redirectStr[4] = " > ";
+
                 int temp = 0;
-                char *tempStr[sizeof(userInputCmd)];
+                char *tempStr[strlen(userInputCmd)];
                 tempStr[temp] = strtok(userInputCmd, ">");
                 while(tempStr[temp] != NULL) {
-                    tempStr[++temp] = strtok((char *) 0, ">");
+                    tempStr[++temp] = strtok(NULL, ">");
                 } // end while
 
-                //userInputCmd = NULL;
-                strcpy(userInputCmd, tempStr[0]);
-                strncat(userInputCmd, " > ", 4);
-                for(int i = i; i < temp; i++) {
-                    strncat(userInputCmd, tempStr[i], strlen(tempStr[i]));
-
-                    if(i < temp - 1) {
-                        strncat(userInputCmd, " > ", 4);
-                    } // end if
+                size_t newInCmdSize = strlen(tempStr[0]) + 1;
+                for(int i = 0; i < temp; i++) {
+                    newInCmdSize += strlen(redirectStr) + strlen(tempStr[i]);
                 } // end for
-            } // end if
 
-            //printf("%s", userInputCmd);
+                char *newInCmd = malloc(newInCmdSize);
+                if(newInCmd == NULL) {
+                    throwErrorMsg(0);
+                } // end if
+
+                strcpy(newInCmd, tempStr[0]);
+                for(int i = i; i < temp; i++) {
+                    strcat(newInCmd, redirectStr);
+                    strcat(newInCmd, tempStr[i]);
+                } // end for
+
+                userInputCmd = newInCmd;
+            } // end if
 
             // get the number of arguments (numArgs) and store the arguments
             // in args 
@@ -76,8 +86,11 @@ int main(int argc, char* argv[]) {
     else if(argc == 2) {
         // open the batch file and read line by line
         FILE *fp = fopen(argv[1], "r");
-        while(getline(&userInputCmd, &size, fp) != -1) {
+        if(fp == NULL) {
+            throwErrorMsg(1);
+        } // end if
 
+        while(getline(&userInputCmd, &size, fp) != -1) {
             if(strstr(userInputCmd, ">") != NULL) {
                 char redirectStr[4] = " > ";
 
@@ -87,7 +100,7 @@ int main(int argc, char* argv[]) {
                 while(tempStr[temp] != NULL) {
                     tempStr[++temp] = strtok(NULL, ">");
                 } // end while
-                
+
                 size_t newInCmdSize = strlen(tempStr[0]) + 1;
                 for(int i = 1; i < temp; i++) {
                     newInCmdSize += strlen(redirectStr) + strlen(tempStr[i]);
@@ -103,37 +116,37 @@ int main(int argc, char* argv[]) {
                     strcat(newInCmd, redirectStr);
                     strcat(newInCmd, tempStr[i]);
                 } // end for
-                  
+
                 userInputCmd = newInCmd;              
-             } // end if
+            } // end if
 
-        // get the number of arguments (numArgs) and store the arguments
-        // in args
-        int numArgs = 0;
-        char *delimeter = " \n\t";
-        char *args[sizeof(userInputCmd)];
-        args[numArgs] = strtok(userInputCmd, delimeter);
-        while(args[numArgs] != NULL) {
-            args[++numArgs] = strtok((char *) 0, delimeter);
+            // get the number of arguments (numArgs) and store the arguments
+            // in args
+            int numArgs = 0;
+            char *delimeter = " \n\t";
+            char *args[sizeof(userInputCmd)];
+            args[numArgs] = strtok(userInputCmd, delimeter);
+            while(args[numArgs] != NULL) {
+                args[++numArgs] = strtok((char *) 0, delimeter);
+            } // end while
+
+            // continue looping if no command was entered
+            // else process the command
+            if(numArgs == 0) {
+                continue;
+            } // end if
+            else {
+                processCmd(args, numArgs, path);
+            } // end else
         } // end while
+        fclose(fp);
+    } // end else if
 
-        // continue looping if no command was entered
-        // else process the command
-        if(numArgs == 0) {
-            continue;
-        } // end if
-        else {
-            processCmd(args, numArgs, path);
-        } // end else
-    } // end while
-    fclose(fp);
-} // end else if
-
-// error for any other number of command line arguments
-else {
-    throwErrorMsg(1);
-} // end else
-return 0;
+    // error for any other number of command line arguments
+    else {
+        throwErrorMsg(1);
+    } // end else
+    return 0;
 }//end main
 
 
@@ -164,6 +177,7 @@ void processCmd(char* args[], int numArgs, char path[]) {
 
     // change path
     else if(strcmp(args[0], "path") == 0) {
+        pathChanged = true;
         if(numArgs == 1) {
             strcpy(path, "");
         } // end if
@@ -175,6 +189,7 @@ void processCmd(char* args[], int numArgs, char path[]) {
         } // end else
     } // end else if
 
+    // display files
     else if(strcmp(args[0], "cat") == 0) {
         int i;
         for(i = 1; i < numArgs; i++) {
@@ -195,12 +210,23 @@ void processCmd(char* args[], int numArgs, char path[]) {
 
     // non built in commands
     else {
+        //char tempPath[strlen(path)];
+        //strcpy(tempPath, path);
+
         redirect(numArgs, args);
         
-        if(strcmp(args[0], "path") != 0) { 
-            strncat(path, "/", 2);
+        if(/*strcmp(args[0], "path") != 0*/ !pathChanged) { 
+            //strncat(path, "/", 2);
+            strcpy(path, "/bin/");
             strncat(path, args[0], strlen(args[0]));
-        } // end if        
+        } // end if
+        else {
+            strcat(path, "/");
+            strncat(path, args[0], strlen(args[0]));
+        } // end else
+        
+        //strncat(path, "\n", 2);
+        //fprintf(stderr, path, strlen(path));
 
         int status;
         pid_t pid;
@@ -210,6 +236,9 @@ void processCmd(char* args[], int numArgs, char path[]) {
                 throwErrorMsg(0);
             case 0:
                 if(execv(path, args) != 0) {
+                    //fprintf(stderr, path, strlen(path));
+                    //fprintf(stderr, args[0], strlen(args[0]));
+                    //fprintf(stderr, "execv failed: %s\n", strerror(errno));
                     throwErrorMsg(-1);
                 } // end if
                 break;
@@ -228,7 +257,7 @@ void processCmd(char* args[], int numArgs, char path[]) {
 void redirect(int numArgs, char* args[]) {
     int outPos = 0; // position of out redirection (>)
     int fd;         // file descriptor
-    
+
     for(int i = 0; i < numArgs; i++) {
         if(strcmp(args[i], ">") == 0) {
             if(outPos != 0 || i == 0 || i == numArgs - 1) {
@@ -249,7 +278,7 @@ void redirect(int numArgs, char* args[]) {
         } // end if
 
 
-        fd = open(args[outPos + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+        fd = open(args[outPos + 1], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
         if(fd == -1) {
             throwErrorMsg(-1);
