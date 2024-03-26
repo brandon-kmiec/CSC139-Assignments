@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
 
     char *userInputCmd = NULL;
     size_t size = 0;
-    
+
     // create file descriptor for "history.txt"
     int historyFD;
     historyFD = open("history.txt", O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
@@ -38,23 +38,23 @@ int main(int argc, char* argv[]) {
         while(true) {
             printf("\nwish> ");
             getline(&userInputCmd, &size, stdin);
-            
+
             // store userInputCmd in temp for history command            
             char temp[strlen(userInputCmd)];
             strcpy(temp, userInputCmd);
-            
+
             // re-execute a previous command
             if(temp[0] == '!') {
                 // get the lineNum of the command to re-execute
                 int lineNum;
                 temp[0] = '0';
                 sscanf(temp, "%d", &lineNum);
-                
+
                 // error if lineNum is negative
                 if(lineNum - 1 < 0) {
                     throwErrorMsg(0);
                 } // end if
-                
+
                 // open "history.txt" and error check
                 FILE *histFP = fopen("history.txt", "r");
                 if(histFP == NULL) {
@@ -131,24 +131,127 @@ int main(int argc, char* argv[]) {
                     while(args[numArgs] != NULL) {
                         args[++numArgs] = strtok(NULL, delimeter);
                     } // end while
-                    
-                    // create a new process
-                    int status;
-                    pid[i] = fork();
-                    if(pid[i] < 0) {
-                        throwErrorMsg(0);
-                    } // end if
-                    else if(pid[i] == 0) {
-                        processParallelCmd(args, numArgs, path, multiplePath);
-                    } // end else if
-                    else {
-                        waitpid(pid[i], &status, 0);
-                        if(status == 1) {
+
+                    // process parallel commands with pipes
+                    if(strstr(commands[i], "|") != NULL) {
+                        int fd[2];
+                        pipe(fd);
+                        if(pid[i] < 0) {
                             throwErrorMsg(0);
                         } // end if
+                        else if(pid[i] == 0) {
+                            close(1);
+                            close(fd[0]);
+                            dup2(fd[1], 1);
+
+                            char *newArgs[strlen(commands[i])];
+                            int newNumArgs = 0;
+                            for(int j = 0; j < numArgs; j++) {
+                                if(strstr(args[j], "|") != NULL) {
+                                    newArgs[j] = args[j];
+                                    newNumArgs++;
+                                } // end if
+                                else {
+                                    break;
+                                } // end else
+                            } // end for
+                            processParallelCmd(newArgs, newNumArgs, path, multiplePath);
+                        } // end else if
+                        else {
+                            close(0);
+                            close(fd[1]);
+                            dup2(fd[0], 0);
+
+                            char *newArgs[strlen(commands[i])];
+                            int newNumArgs = 0;
+                            int pipePos = 0;
+                            for(int j = 0; j < numArgs; j++) {
+                                if(strstr(args[j], "|") != NULL) {
+                                    pipePos = j;
+                                    break;
+                                } // end if
+                            } // end for
+                            for(int j = pipePos + 1; j < numArgs; j++) {
+                                newArgs[j - (pipePos + 1)] = args[j];
+                                newNumArgs++;
+                            } // end for
+                            processParallelCmd(newArgs, newNumArgs, path, multiplePath);
+                        } // end else
+                        close(fd[0]);
+                        close(fd[1]);
+                        int status;
+                        wait(&status);
+                    } // end if
+
+                    else {
+                        // create a new process
+                        int status;
+                        pid[i] = fork();
+                        if(pid[i] < 0) {
+                            throwErrorMsg(0);
+                        } // end if
+                        else if(pid[i] == 0) {
+                            processParallelCmd(args, numArgs, path, multiplePath);
+                        } // end else if
+                        else {
+                            waitpid(pid[i], &status, 0);
+                            if(status == 1) {
+                                throwErrorMsg(0);
+                            } // end if
+                        } // end else
                     } // end else
                 } // end for
             } // end if
+
+            // process pipes
+            else if(strstr(userInputCmd, "|") != NULL) {
+                int numCmds = 0;
+                char *commands[strlen(userInputCmd)];
+                commands[numCmds] = strtok(userInputCmd, "|\n\t");
+                while(commands[numCmds] != NULL) {
+                    commands[++numCmds] = strtok(NULL, "|\n\t");
+                } // end while
+
+                char *delimeter = " \n\t";
+
+                int fd[2];
+                pipe(fd);
+                pid_t pid = fork(); 
+                if(pid < 0) {
+                    throwErrorMsg(0);
+                } // end if
+                else if(pid == 0) {
+                    close(1);
+                    close(fd[0]);
+                    dup2(fd[1], 1);
+
+                    int numArgs = 0;
+                    char *args[strlen(commands[0])];
+                    args[numArgs] = strtok(commands[0], delimeter);
+                    while(args[numArgs] != NULL) {
+                        args[++numArgs] = strtok(NULL, delimeter);
+                    } // end while
+                    processParallelCmd(args, numArgs, path, multiplePath);                    
+                } // end else if
+                else {
+                    close(0);
+                    close(fd[1]);
+                    dup2(fd[0], 0);
+
+                    int numArgs = 0;
+                    char *args[strlen(commands[1])];
+                    args[numArgs] = strtok(commands[1], delimeter);
+                    while(args[numArgs] != NULL) {
+                        args[++numArgs] = strtok(NULL, delimeter); 
+                    } // end while
+                    processParallelCmd(args, numArgs, path, multiplePath);
+                } // end else
+
+                close(fd[0]);
+                close(fd[1]);
+                int status;
+                wait(&status);
+            } // end else if
 
             // get the number of arguments (numArgs) and store the arguments
             // in args
@@ -266,7 +369,7 @@ int main(int argc, char* argv[]) {
 
                 pid_t pid[numCmds];
 
-                // strtok each command in commands based on 
+                // strtok each command in commands based on
                 // delimeter " \n\t", then process the command
                 for(int i = 0; i < numCmds; i++) {
                     int numArgs = 0;
@@ -277,23 +380,126 @@ int main(int argc, char* argv[]) {
                         args[++numArgs] = strtok(NULL, delimeter);
                     } // end while
 
-                    // create a new process 
-                    int status;
-                    pid[i] = fork();
-                    if(pid[i] < 0) {
-                        throwErrorMsg(0);
-                    } // end if
-                    else if(pid[i] == 0) {
-                        processParallelCmd(args, numArgs, path, multiplePath);
-                    } // end else if
-                    else {
-                        waitpid(pid[i], &status, 0);
-                        if(status == 1) {
+                    // process parallel commands with pipes
+                    if(strstr(commands[i], "|") != NULL) {
+                        int fd[2];
+                        pipe(fd);
+                        if(pid[i] < 0) {
                             throwErrorMsg(0);
                         } // end if
+                        else if(pid[i] == 0) {
+                            close(1);
+                            close(fd[0]);
+                            dup2(fd[1], 1);
+
+                            char *newArgs[strlen(commands[i])];
+                            int newNumArgs = 0;
+                            for(int j = 0; j < numArgs; j++) {
+                                if(strstr(args[j], "|") != NULL) {
+                                    newArgs[j] = args[j];
+                                    newNumArgs++;
+                                } // end if
+                                else {
+                                    break;
+                                } // end else
+                            } // end for
+                            processParallelCmd(newArgs, newNumArgs, path, multiplePath);
+                        } // end else if
+                        else {
+                            close(0);
+                            close(fd[1]);
+                            dup2(fd[0], 0);
+
+                            char *newArgs[strlen(commands[i])];
+                            int newNumArgs = 0;
+                            int pipePos = 0;
+                            for(int j = 0; j < numArgs; j++) {
+                                if(strstr(args[j], "|") != NULL) {
+                                    pipePos = j;
+                                    break;
+                                } // end if
+                            } // end for
+                            for(int j = pipePos + 1; j < numArgs; j++) {
+                                newArgs[j - (pipePos + 1)] = args[j];
+                                newNumArgs++;
+                            } // end for
+                            processParallelCmd(newArgs, newNumArgs, path, multiplePath);
+                        } // end else
+                        close(fd[0]);
+                        close(fd[1]);
+                        int status;
+                        wait(&status);
+                    } // end if
+
+                    else {
+                        // create a new process
+                        int status;
+                        pid[i] = fork();
+                        if(pid[i] < 0) {
+                            throwErrorMsg(0);
+                        } // end if
+                        else if(pid[i] == 0) {
+                            processParallelCmd(args, numArgs, path, multiplePath);
+                        } // end else if
+                        else {
+                            waitpid(pid[i], &status, 0);
+                            if(status == 1) {
+                                throwErrorMsg(0);
+                            } // end if
+                        } // end else
                     } // end else
                 } // end for
             } // end if
+
+            // process pipes
+            else if(strstr(userInputCmd, "|") != NULL) {
+                int numCmds = 0;
+                char *commands[strlen(userInputCmd)];
+                commands[numCmds] = strtok(userInputCmd, "|\n\t");
+                while(commands[numCmds] != NULL) {
+                    commands[++numCmds] = strtok(NULL, "|\n\t");
+                } // end while
+
+                char *delimeter = " \n\t";
+
+                int fd[2];
+                pipe(fd);
+                pid_t pid = fork(); 
+                if(pid < 0) {
+                    throwErrorMsg(0);
+                } // end if
+                else if(pid == 0) {
+                    close(1);
+                    close(fd[0]);
+                    dup2(fd[1], 1);
+
+                    int numArgs = 0;
+                    char *args[strlen(commands[0])];
+                    args[numArgs] = strtok(commands[0], delimeter);
+                    while(args[numArgs] != NULL) {
+                        args[++numArgs] = strtok(NULL, delimeter);
+                    } // end while
+                    processParallelCmd(args, numArgs, path, multiplePath);                    
+                } // end else if
+                else {
+                    close(0);
+                    close(fd[1]);
+                    dup2(fd[0], 0);
+
+                    int numArgs = 0;
+                    char *args[strlen(commands[1])];
+                    args[numArgs] = strtok(commands[1], delimeter);
+                    while(args[numArgs] != NULL) {
+                        args[++numArgs] = strtok(NULL, delimeter); 
+                    } // end while
+                    processParallelCmd(args, numArgs, path, multiplePath);
+                } // end else
+
+                close(fd[0]);
+                close(fd[1]);
+                int status;
+                wait(&status);
+            } // end else if
 
             // else, get the number of arguments (numArgs) and store the 
             // arguments in args
