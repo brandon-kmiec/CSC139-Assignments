@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
 		printf("Format: ./main [testNum]\n");
 	} // end if
 	else {
+		// run test case based on command line argument
 		switch(testNum) {
 			case 1:
 				test1();
@@ -78,7 +79,9 @@ int main(int argc, char* argv[]) {
 } // end main
 
 
-// test umeminit with valid sizeOfRegion and valid allocationAlgo
+// test 1: umeminit with valid sizeOfRegion and valid allocationAlgo
+// test if umeminit returns success
+// test 1 is a success if umeminit returns 0, failure otherwise
 void test1() {
 	int recRes = umeminit(64, BEST_FIT);
 	int expRes = 0; // success
@@ -87,7 +90,9 @@ void test1() {
 } // end test1
 
 
-// test umeminit with invalid sizeOfRegion and valid allocationAlgo
+// test 2: umeminit with invalid sizeOfRegion and valid allocationAlgo
+// test if umeminit returns failure
+// test 2 is a success if umeminit returns -1, failure otherwise
 void test2() {
 	int recRes = umeminit(-1, BEST_FIT);
 	int expRes = -1; // failure
@@ -96,7 +101,9 @@ void test2() {
 } // end test2
 
 
-// test umeminit with valid sizeOfRegion and invalid allocationAlgo
+// test 3: umeminit with valid sizeOfRegion and invalid allocationAlgo
+// test if umeminit return failure
+// test 3 is a success if umeminit returns -1, failure otherwise
 void test3() {
 	int recRes = umeminit(64, -1);
 	int expRes = -1; // failure
@@ -105,7 +112,11 @@ void test3() {
 } // end test3
 
 
-// test umeminit with multiple calls to umeminit
+// test 4: umeminit with multiple calls to umeminit
+// test if umeminit returns success the first call and failure the
+//	second call
+// test 4a is a success if umeminit returns 0, failure otherwise
+// test 4b is a success if umeminit returns -1, failure otherwise
 void test4() {
 	int recRes = umeminit(64, BEST_FIT);
 	int expRes = 0; // success
@@ -119,7 +130,10 @@ void test4() {
 } // end test4
 
 
-// test umemdump
+// test 5: umemdump
+// test if umemdump prints memory addresses and sizes
+// test 5 is a success if umeminit returns 0 and memory address and memory 
+//	size are printed (format is address: size)
 void test5() {
 	if(umeminit(64, BEST_FIT) == 0) {
 		umemdump();
@@ -131,7 +145,10 @@ void test5() {
 } // end test5
 
 
-// test umalloc with invalid size
+// test 6: umalloc with invalid size
+// test if umalloc returns NULL
+// test 6 is a success if umeminit returns 0 and umalloc returns NULL, 
+//	failure otherwise
 void test6() {
 	if(umeminit(64, BEST_FIT) == 0) {
 		int expRes = 0; // NULL = 0
@@ -152,7 +169,10 @@ void test6() {
 } // end test6
 
 
-// test valid umalloc
+// test 7: valid umalloc
+// test if umalloc returns a memory address
+// test 7 is a success if umeminit returns 0 and umalloc returns a value 
+//	other than NULL, failure otherwise
 void test7() {
 	if(umeminit(64, BEST_FIT) == 0) {
 		int *recRes = umalloc(4);
@@ -170,7 +190,10 @@ void test7() {
 } // end test7
 
 
-// test multiple umalloc calls with different size requests
+// test 8: multiple umalloc calls with different size requests
+// test if umalloc returns memory address when called multiple times
+// test 8a and 8b is a success if umeminit returns 0 and umalloc returns a 
+//	value other than NULL, failure otherwise
 void test8() {
 	if(umeminit(64, BEST_FIT) == 0) {
 		int *recRes = umalloc(4);
@@ -198,7 +221,10 @@ void test8() {
 } // end test8
 
 
-// test invalid ufree
+// test 9: invalid ufree
+// test if ufree returns failure
+// test 9 is a success if umeminit returns 0, umalloc returns a value 
+//	other than NULL, and ufree returns -1, failure otherwise
 void test9() {
 	if(umeminit(64, BEST_FIT) == 0) {
 		if(umalloc(4) != NULL) {
@@ -214,7 +240,10 @@ void test9() {
 } // end test9
 
 
-// test valid umalloc with valid ufree
+// test 10: valid umalloc with valid ufree
+// test if ufree returns success
+// test 10 is a success if umeminit returns 0, umalloc returns a value 
+//	other than NULL, and ufree returns 0, failure otherwise
 void test10() {
 	if(umeminit(64, BEST_FIT) == 0) {
 		int *retPtr = umalloc(4);
@@ -233,7 +262,12 @@ void test10() {
 // since BEST_FIT was used in 9 of the 10 previous tests
 
 
-// test umeminit, umalloc, ufree with WORST_FIT
+// test 11: umeminit, umalloc, ufree with WORST_FIT
+// tests if WORST_FIT works and results in success from umeminit, umalloc,
+//	and ufree
+// test 11a is a success if umeminit returns 0
+// test 11b is a success if 11a is a success and umalloc is not NULL
+// test 11c is a success if 11a and 11b succeed and ufree returns 0
 void test11() {
 	int recRes = umeminit(64, WORST_FIT);
 	int expRes = 0; // success
@@ -260,7 +294,12 @@ void test11() {
 } // end test11
 
 
-// test umeminit, umalloc, ufree with FIRST_FIT
+// test 12: umeminit, umalloc, ufree with FIRST_FIT
+// tests if FIRST_FIT works and results in success from umeminit, umalloc,
+//	and ufree
+// test 12a is a success if umeminit returns 0
+// test 12b is a success if 12a is a success and umalloc is not NULL
+// test 12c is a success if 12a and 12b succeed and ufree returns 0
 void test12() {
 	int recRes = umeminit(64, FIRST_FIT);
 	int expRes = 0; // success
@@ -287,7 +326,12 @@ void test12() {
 } // end test12
 
 
-// test umeminit, umalloc, ufree with NEXT_FIT
+// test 13: umeminit, umalloc, ufree with NEXT_FIT
+// tests if NEXT_FIT works and results in success from umeminit, umalloc,
+//	and ufree
+// test 13a is a success if umeminit returns 0
+// test 13b is a success if 13a is a success and umalloc is not NULL
+// test 13c is a success if 13a and 13b succeed and ufree returns 0
 void test13() {
 	int recRes = umeminit(64, NEXT_FIT);
 	int expRes = 0; // success
@@ -315,6 +359,7 @@ void test13() {
 
 
 // helper function to compare and print the result of two integers
+//	prints Pass or Fail based on comparison of expected and received result
 void printResult(char* testNum, int expResult, int recResult) {
 	printf("\nTest #%s: ", testNum);
 	
@@ -331,6 +376,7 @@ void printResult(char* testNum, int expResult, int recResult) {
 
 
 // helper function to compare and print the result of two integer pointers
+//	prints Pass or Fail based on comparison of expected and received result
 void printPointerResult(char* testNum, int* expResult, int* recResult) {
 	printf("\nTest #%s: ", testNum);
 	

@@ -75,8 +75,9 @@ void *umalloc(size_t size) {
 
     size_t bestSize;
 
-    // TODO: modify code to be different than sample code
     switch(allocAlgo) {
+		// search freeList for the first smallest free space chunk that is large
+		// enough for the requested size
         case BEST_FIT:
             bestSize = freeList -> size + size;
             while(curMemBlock != NULL) {
@@ -87,6 +88,7 @@ void *umalloc(size_t size) {
                 curMemBlock = curMemBlock -> next;
             } // end while
             break;
+		// search freeList for the largest chunk of free space
         case WORST_FIT:
             bestSize = 0;
             while(curMemBlock != NULL) {
@@ -97,6 +99,7 @@ void *umalloc(size_t size) {
                 curMemBlock = curMemBlock -> next;
             } // end while
             break;
+		// search freeList for the first chunk that is large enough and split
         case FIRST_FIT:
             while(curMemBlock != NULL) {
                 if(curMemBlock -> size >= size) {
@@ -112,6 +115,7 @@ void *umalloc(size_t size) {
             } // end while
 			freeList = curMemBlock;
             break;
+		// search freeList for the second chunk that is large enough and split
         case NEXT_FIT:
 			while(curMemBlock != NULL) {
                 if(curMemBlock -> size >= size) {
@@ -154,6 +158,7 @@ int ufree(void *ptr) {
         return -1;
     } // end if
 
+	// Coalesce if allocAlgo is FIRST_FIT or NEXT_FIT
 	if(allocAlgo == FIRST_FIT || allocAlgo == NEXT_FIT) {
 		memBlock *curMemBlock = (memBlock *) ptr;
 		memBlock *prevMemBlock = freeList;
