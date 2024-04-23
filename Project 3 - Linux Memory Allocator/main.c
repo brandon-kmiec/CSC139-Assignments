@@ -1,3 +1,8 @@
+// Brandon Kmiec
+// CSC 139-06
+// 04-15-2024
+// Linux Memory Allocator
+
 #define GREEN "\x1B[32m"
 #define RED "\x1B[31m"
 #define NORM "\x1B[0m"
@@ -31,7 +36,6 @@ int main(int argc, char* argv[]) {
 		printf("Format: ./main [testNum]\n");
 	} // end if
 	else {
-		// run test case based on command line argument
 		switch(testNum) {
 			case 1:
 				test1();
@@ -80,7 +84,6 @@ int main(int argc, char* argv[]) {
 
 
 // test 1: umeminit with valid sizeOfRegion and valid allocationAlgo
-// test if umeminit returns success
 // test 1 is a success if umeminit returns 0, failure otherwise
 void test1() {
 	int recRes = umeminit(64, BEST_FIT);
@@ -91,7 +94,6 @@ void test1() {
 
 
 // test 2: umeminit with invalid sizeOfRegion and valid allocationAlgo
-// test if umeminit returns failure
 // test 2 is a success if umeminit returns -1, failure otherwise
 void test2() {
 	int recRes = umeminit(-1, BEST_FIT);
@@ -102,7 +104,6 @@ void test2() {
 
 
 // test 3: umeminit with valid sizeOfRegion and invalid allocationAlgo
-// test if umeminit return failure
 // test 3 is a success if umeminit returns -1, failure otherwise
 void test3() {
 	int recRes = umeminit(64, -1);
@@ -113,8 +114,6 @@ void test3() {
 
 
 // test 4: umeminit with multiple calls to umeminit
-// test if umeminit returns success the first call and failure the
-//	second call
 // test 4a is a success if umeminit returns 0, failure otherwise
 // test 4b is a success if umeminit returns -1, failure otherwise
 void test4() {
@@ -131,7 +130,6 @@ void test4() {
 
 
 // test 5: umemdump
-// test if umemdump prints memory addresses and sizes
 // test 5 is a success if umeminit returns 0 and memory address and memory 
 //	size are printed (format is address: size)
 void test5() {
@@ -146,7 +144,6 @@ void test5() {
 
 
 // test 6: umalloc with invalid size
-// test if umalloc returns NULL
 // test 6 is a success if umeminit returns 0 and umalloc returns NULL, 
 //	failure otherwise
 void test6() {
@@ -170,7 +167,6 @@ void test6() {
 
 
 // test 7: valid umalloc
-// test if umalloc returns a memory address
 // test 7 is a success if umeminit returns 0 and umalloc returns a value 
 //	other than NULL, failure otherwise
 void test7() {
@@ -191,7 +187,6 @@ void test7() {
 
 
 // test 8: multiple umalloc calls with different size requests
-// test if umalloc returns memory address when called multiple times
 // test 8a and 8b is a success if umeminit returns 0 and umalloc returns a 
 //	value other than NULL, failure otherwise
 void test8() {
@@ -222,7 +217,6 @@ void test8() {
 
 
 // test 9: invalid ufree
-// test if ufree returns failure
 // test 9 is a success if umeminit returns 0, umalloc returns a value 
 //	other than NULL, and ufree returns -1, failure otherwise
 void test9() {
@@ -241,7 +235,6 @@ void test9() {
 
 
 // test 10: valid umalloc with valid ufree
-// test if ufree returns success
 // test 10 is a success if umeminit returns 0, umalloc returns a value 
 //	other than NULL, and ufree returns 0, failure otherwise
 void test10() {
@@ -263,8 +256,6 @@ void test10() {
 
 
 // test 11: umeminit, umalloc, ufree with WORST_FIT
-// tests if WORST_FIT works and results in success from umeminit, umalloc,
-//	and ufree
 // test 11a is a success if umeminit returns 0
 // test 11b is a success if 11a is a success and umalloc is not NULL
 // test 11c is a success if 11a and 11b succeed and ufree returns 0
@@ -295,8 +286,6 @@ void test11() {
 
 
 // test 12: umeminit, umalloc, ufree with FIRST_FIT
-// tests if FIRST_FIT works and results in success from umeminit, umalloc,
-//	and ufree
 // test 12a is a success if umeminit returns 0
 // test 12b is a success if 12a is a success and umalloc is not NULL
 // test 12c is a success if 12a and 12b succeed and ufree returns 0
@@ -327,8 +316,6 @@ void test12() {
 
 
 // test 13: umeminit, umalloc, ufree with NEXT_FIT
-// tests if NEXT_FIT works and results in success from umeminit, umalloc,
-//	and ufree
 // test 13a is a success if umeminit returns 0
 // test 13b is a success if 13a is a success and umalloc is not NULL
 // test 13c is a success if 13a and 13b succeed and ufree returns 0
@@ -359,7 +346,6 @@ void test13() {
 
 
 // helper function to compare and print the result of two integers
-//	prints Pass or Fail based on comparison of expected and received result
 void printResult(char* testNum, int expResult, int recResult) {
 	printf("\nTest #%s: ", testNum);
 	
@@ -376,7 +362,6 @@ void printResult(char* testNum, int expResult, int recResult) {
 
 
 // helper function to compare and print the result of two integer pointers
-//	prints Pass or Fail based on comparison of expected and received result
 void printPointerResult(char* testNum, int* expResult, int* recResult) {
 	printf("\nTest #%s: ", testNum);
 	

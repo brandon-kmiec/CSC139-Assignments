@@ -1,3 +1,8 @@
+// Brandon Kmiec
+// CSC 139-06
+// 04-15-2024
+// Linux Memory Allocator
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -15,7 +20,7 @@ static memBlock *freeList = NULL;
 static memBlock *firstFitEndLoc = NULL;
 static int allocAlgo;
 
-size_t roundNum(int, int);
+size_t roundNum(int, size_t);
 
 // initialize memory region with allocationAlgo
 int umeminit(size_t sizeOfRegion, int allocationAlgo) {
@@ -34,7 +39,7 @@ int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     allocAlgo = allocationAlgo;
 
     // round sizeOfRegion up to be in units of the page size
-	roundNum(getpagesize(), sizeOfRegion);
+    sizeOfRegion = roundNum(getpagesize(), sizeOfRegion);
 
     // request sizeOfRegion bytes of memory from OS
     int fd = open("/dev/zero", O_RDWR);
@@ -68,7 +73,7 @@ void *umalloc(size_t size) {
     } // end if
 
     // round size up to next multiple of 8
-	roundNum(8, size);
+	size = roundNum(8, size);
 	
     memBlock *curMemBlock = freeList;
     memBlock *retMemBlock = NULL;
@@ -194,7 +199,7 @@ void umemdump() {
 
 
 // helper function to round up numbers
-size_t roundNum(int divisor, int dividend) {
+size_t roundNum(int divisor, size_t dividend) {
     size_t ret;
 	
 	int remainder = dividend % divisor;
