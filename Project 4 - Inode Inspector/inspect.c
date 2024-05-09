@@ -10,256 +10,334 @@
 #include <errno.h>
 #include <time.h>
 
-void dispInodeInfo(int, char*[], struct stat, int);
+static int helpFlag = 0;	// flag for if argv contains -?/--help
+static int iFlag = 0;		// flag for if argv contains -i/--inspect
+static int aFlag = 0;		// flag for if argv contains -a/--all
+static int rFlag = 0;		// flag for if argv contains -r/--recursive
+static int hFlag = 0;		// flag for if argv contains -h/--human
+static int fFlag = 0;		// flag for if argv contains -f/--format
+static int textFlag = 0;	// flag for if argv contains text
+static int jsonFlag = 0;	// flag for if argv contains json
+static int lFlag = 0;		// flag for if argv contains -l/--log
+
+void dispInodeInfo(struct stat, char[]);
 void printPermissions(struct stat);
 void dispHelpInfo(char*[]);
 
 int main(int argc, char *argv[]) {
     struct stat fileInfo;
 
+    // display help info in argv only contains ./inspect
     if(argc == 1) {
         dispHelpInfo(argv);
+        return 0;
     } // end if
 
-    else if(argc == 2) {
-        int ret = stat(argv[1], &fileInfo);
-        if(ret == 0) {
-            dispInodeInfo(argc, argv, fileInfo, 0);
+    // set flags based on contents of argv
+    for(int i = 0; i < argc; i++) {
+        if(strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
+            helpFlag = 1;
         } // end if
+        else if(strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--inspect") == 0) {
+            iFlag = 1;
+        } // end if
+        else if(strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--all") == 0) {
+            aFlag = 1;
+        } // end if
+        else if(strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--recursive") == 0) {
+            rFlag = 1;
+        } // end if
+        else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--human") == 0) {
+            hFlag = 1;
+        } // end if
+        else if(strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) {
+            fFlag = 1;
+        } // end if
+        else if(strcmp(argv[i], "text") == 0) {
+            textFlag = 1;
+        } // end if
+        else if(strcmp(argv[i], "json") == 0) {
+            jsonFlag = 1;
+        } // end if
+        else if(strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0) {
+            lFlag = 1;
+        } // end if
+    } // end for
 
-        else if(ret != 0) {
-            if(strcmp(argv[1], "-?") == 0 || strcmp(argv[1], "--help") == 0) {
-                dispHelpInfo(argv);
+    // display help info if helpFlag is set
+    if(helpFlag == 1) {
+        dispHelpInfo(argv);
+        return 0;
+    } // end if
+
+    // obtain return value from stat(/path/to/file, &fileInfo)
+    int ret;
+    if(iFlag == 1) {
+        ret = stat(argv[2], &fileInfo);
+        if(ret == 0) {
+            // display inode info if aFlag and lFlag are not set
+            if(aFlag == 0 && lFlag == 0) {
+                dispInodeInfo(fileInfo, argv[2]);
             } // end if
-            else {
-                fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
-                        argv[1], strerror(errno));
-                return 1;
-            } // end else
-        } // end else if
-    } // end else if
+            else if(aFlag == 1) {
+
+            } // end else if
+            else if(lFlag == 1) {
+
+            } // end else if
+        } // end if
+        else {
+            fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
+                    argv[2], strerror(errno));
+            return 1;
+        } // end else
+    } // end if
+    else {
+        ret = stat(argv[1], &fileInfo);
+        if(ret == 0) {
+            // display inode info if aFlag and lFlag are not set
+            if(aFlag == 0 && lFlag == 0) {
+                dispInodeInfo(fileInfo, argv[1]);
+            } // end if
+            else if(aFlag == 1) {
+
+            } // end else if
+            else if(lFlag == 1) {
+
+            } // end else if
+        } // end if
+        else {
+            fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
+                    argv[1], strerror(errno));
+            return 1;
+        } // end else
+    } // end else
+
+    /*	
+    // Does -l/--log redirect output to a file???
+    // Still not sure what -r/--recursive does
 
     // TODO add support for inspect without -i since -i/--inode is optional
-    else if(argc == 3) {
-        int ret = stat(argv[2], &fileInfo);
-        if(ret == 0) {
-            if(strcmp(argv[1], "-i") == 0 || strcmp(argv[1], "--inode") == 0) {
-                dispInodeInfo(argc, argv, fileInfo, 0);
-            } // end if
-            else if(strcmp(argv[1], "-a") == 0 || strcmp(argv[1], "--all") == 0) {
-                // TODO (display inode info for all files in directory)
-            } // end else if
-        } // end if
+    // TODO add support for mixed options (such as ./inspect -i /file/path -h -f json)
+    // search contents of argv and set flags based on if argv contains -h, -f, json, text, etc.
+    // process command based on what flags are set (print human readable if -h flag set)
+    // help info should only occur as ./inspect -? or ./inspect --help or ./inspect
+    // -i/--inode is optional, should process command as if it was present
 
-        else if(ret != 0) {
-            fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
-                    argv[2],strerror(errno));
-            return 1;
-        } // end else if
-    } // end else if
+    // if argv contains -i/--inode
+    // int ret = stat(argv[2], &fileInfo);
+    // else
+    // int ret = stat(argv[1], &fileInfo);
 
-    else if(argc == 4) {
-        int ret = stat(argv[2], &fileInfo);
-        if(ret == 0) {
-            if((strcmp(argv[1], "-a") == 0 || strcmp(argv[1], "--all") == 0) &&
-                    (strcmp(argv[3], "-r") == 0 || strcmp(argv[3], "--recursive") == 0)) {
-                // TODO (display inode info for all files in directory) (unknown what -r, --recursive does)
-            } // end if
-            else if(strcmp(argv[3], "-h") == 0 || strcmp(argv[3], "--human") == 0) {
-                dispInodeInfo(argc, argv, fileInfo, 1);
-            } // end else if
-            else if(strcmp(argv[3], "-f") == 0 || strcmp(argv[3], "--format") == 0) {
-                dispInodeInfo(argc, argv, fileInfo, 0);
-            } // end else if
-        } // end if
+    // if argv contains -a/--all, loop through contents of directory printing inode info
+    // while (condition)
+    //	dispInodeInfo()
 
-        else if(ret != 0) {
-            fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
-                    argv[2],strerror(errno));
-            return 1;
-        } // end else if
-    } // end else if
-
-    else if(argc == 5) {
-        int ret = stat(argv[2], &fileInfo);
-        if(ret == 0) {
-            if(strcmp(argv[3], "-f") == 0 || strcmp(argv[3], "--format") == 0) {
-                if(strcmp(argv[4], "text") == 0) {
-                    dispInodeInfo(argc, argv, fileInfo, 0);
-                } // end if
-                else if(strcmp(argv[4], "json") == 0) {
-                    // TODO (display inode info in json)
-                } // end else if
-            } // end if
-            else if(strcmp(argv[3], "-l") == 0 || strcmp(argv[3], "--log") == 0) {
-                // TODO (log operations to specified file
-            } // end else if
-        } // end if
-
-        else if(ret != 0) {
-            fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
-                    argv[2],strerror(errno));
-            return 1;
-        } // end else if
-    } // end else if
-
-
-    //	else {
-    //	} // end else
-
-    /*
-    // display help info if command is "./inspect"
-    if(argc < 2) {
-    dispHelpInfo(argv);
-    } // end if
-
-    // display help info if command is "./inspect -?" or "./inspect --help"
-    // else, error if unable to access file
-    else if(argc == 2 && stat(argv[1], &fileInfo) != 0) {
-    if(strcmp(argv[1], "-?") == 0 || strcmp(argv[1], "--help") == 0) {
-    dispHelpInfo(argv);
-    } // end if
-    else {
-    fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
-    argv[1], strerror(errno));
-    return 1;
-    } // end else
-    } // end else if
-
-    // error if unable to access file and command contains options
-    else if(argc == 3 && stat(argv[2], &fileInfo) != 0) {
-    fprintf(stderr, "\nError getting file info for %s: %s\n\n", 
-    argv[2],strerror(errno));
-    return 1;
-    } // end else if
-
-    // Display inode information
-    else if(argc == 2) {
-    dispInodeInfo(argc, argv, fileInfo);
-    } // end else if
-    else if(argc == 3 && (strcmp(argv[1], "-i") == 0 
-    || strcmp(argv[1], "--inode") == 0)) {
-
-    } // end else if
-
-
-    // TODO
-    // Display inode information for all files in a directory
-    else if(argc > 2 && (strcmp(argv[1], "-a") == 0 || 
-    strcmp(argv[1], "--all") == 0)) {
-    if(argc > 3 && (strcmp(argv[3], "-r") == 0 ||
-    strcmp(argv[3], "--recursive") == 0)) {
-
-    } // end if
-    else {
-
-    } // end else
-    } // end else if
-
-    // TODO
-    // Display inode information with human-readable form
-    else if(argc > 2 ) {
-    }
+    // in dispInodeInfo
+    // if argv contains -f/--format
+    // if argv contains json
+    // if argv contains -h/--human
+    // display inode info with human readable numbers with json format
+    // else
+    // display default inode info with json format
+    // if argv contains text	// could do: if(textFlag = true || (textFlag = false && jsonflag = false)) then ignore following else statement
+    // if argv contains -h/--human
+    // display inode info with human readable numbers with text format
+    // else
+    // display default inode info with text format
+    // else default to text format
+    // if argv contains -h/--human
+    // display inode info with human readable numbers with text format
+    // else
+    // display default inode info with text format
+    // else
+    // if argv contains -h/--human
+    // display inode info with human readable numbers with text format
+    // else
+    // display default inode info with text format
     */
+
     return 0;
 } // end main
 
-void dispInodeInfo(int numArgs, char *args[], struct stat fileInfo, int human) {
-    //struct stat fileInfo;
+void dispInodeInfo(struct stat fileInfo, char filePath[]) {
+    // display inode info in json format
+    // else display in text format
+    if(fFlag == 1 && jsonFlag == 1) {
+        printf("\n{\n");
+        printf("  \"filePath\": \"%s\",\n", filePath);
+        printf("  \"inode\": {\n");
+        printf("    \"number\": %lu,\n", fileInfo.st_ino);
+        printf("    \"type\": ");
+        if(S_ISREG(fileInfo.st_mode))
+            printf("\"regular file\",\n");
+        else if(S_ISDIR(fileInfo.st_mode))
+            printf("\"directory\",\n");
+        else if(S_ISCHR(fileInfo.st_mode))
+            printf("\"character device\",\n");
+        else if(S_ISBLK(fileInfo.st_mode))
+            printf("\"block device\",\n");
+        else if(S_ISFIFO(fileInfo.st_mode))
+            printf("\"FIFO (named pipe)\",\n");
+        else if(S_ISLNK(fileInfo.st_mode))
+            printf("\"symbolic link\",\n");
+        else if(S_ISSOCK(fileInfo.st_mode))
+            printf("\"socket\",\n");
+        else
+            printf("\"unknown?\",\n");
 
-    if(numArgs == 2) {
-        printf("\nInformation for %s:\n", args[1]);
-    } // end if
-    if(numArgs >= 3) {
-        printf("\nInformation for %s:\n", args[2]);
-    } // end if
-    printf("File Inode: %lu\n", fileInfo.st_ino);
-    printf("File Type: ");
+        printf("    \"permissions\": \"");
+        printPermissions(fileInfo);
+        printf("\",\n");
 
-    if(S_ISREG(fileInfo.st_mode))
-        printf("regular file\n");
-    else if(S_ISDIR(fileInfo.st_mode))
-        printf("directory\n");
-    else if(S_ISCHR(fileInfo.st_mode))
-        printf("character device\n");
-    else if(S_ISBLK(fileInfo.st_mode))
-        printf("block device\n");
-    else if(S_ISFIFO(fileInfo.st_mode))
-        printf("FIFO (named pipe)\n");
-    else if(S_ISLNK(fileInfo.st_mode))
-        printf("symbolic link\n");
-    else if(S_ISSOCK(fileInfo.st_mode))
-        printf("socket\n");
-    else
-        printf("unknown?\n");
+        printf("    \"linkCount\": %lu,\n", fileInfo.st_nlink);
 
-    printf("File Permissions: ");
-    printPermissions(fileInfo);
+        printf("    \"uid\": %d,\n", fileInfo.st_uid);
+        printf("    \"gid\": %d,\n", fileInfo.st_gid);
 
-    printf("Number of Hard Links: %lu\n", fileInfo.st_nlink);
-    
-    printf("File Owner User ID: %d\n", fileInfo.st_uid);
-    printf("File Owner Group ID: %d\n", fileInfo.st_gid);
-    
-    if(human == 0) {
-        printf("File Size: %lu bytes\n", fileInfo.st_size);
-        printf("Last Access Time: %ld\n", fileInfo.st_atime);
-        printf("Last Modification Time: %ld\n", fileInfo.st_mtime);
-        printf("Last Status Change Time: %ld\n\n", fileInfo.st_ctime);
-    } // end if
-    else if(human == 1) {
-        float size = fileInfo.st_size;
+        if(hFlag == 1) {
+            float size = fileInfo.st_size;
 
-        time_t atime = fileInfo.st_atime;
-        time_t mtime = fileInfo.st_mtime;
-        time_t ctime = fileInfo.st_ctime;
-        struct tm ts;
-        char buf[80];
+            time_t atime = fileInfo.st_atime;
+            time_t mtime = fileInfo.st_mtime;
+            time_t ctime = fileInfo.st_ctime;
+            struct tm ts;
+            char buf[80];
 
-        printf("File Size: ");
-        if(size < 1024)
-            printf("%0.0f bytes\n", size);
-        else if(size >= 1024 && size < 1048576) {
-            if((int)size % 1024 == 0)
-                printf("%dK\n", ((int)size / 1024));
-            else
-                printf("%.2fK\n",(float)(size / 1024));
-        } // end else if
-        else if(size >= 1048576 && size < 1073741824) {
-            if((int)size % 1048576 == 0)
-                printf("%dM\n", ((int)size / 1048576));
-            else
-                printf("%.2fM\n", (float)(size / 1048576));
-        } // end else if
+            printf("    \"size\": ");
+            if(size < 1024)
+                printf("\"%0.0f bytes\",\n", size);
+            else if(size >= 1024 && size < 1048576) {
+                if((int)size % 1024 == 0)
+                    printf("\"%dK\",\n", ((int)size / 1024));
+                else
+                    printf("\"%.2fK\",\n",(float)(size / 1024));
+            } // end else if
+            else if(size >= 1048576 && size < 1073741824) {
+                if((int)size % 1048576 == 0)
+                    printf("\"%dM\",\n", ((int)size / 1048576));
+                else
+                    printf("\"%.2fM\",\n", (float)(size / 1048576));
+            } // end else if
+            else {
+                if((int)size % 1073741824 == 0)
+                    printf("\"%dG\",\n", ((int)size / 1073741824));
+                else
+                    printf("\"%.2fG\",\n", (float)(size / 1073741824));
+            } // end else
+
+            ts = *localtime(&atime);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ts);
+            printf("    \"accessTime\": \"%s\",\n", buf);
+
+            ts = *localtime(&mtime);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ts);
+            printf("    \"modificationTime\": \"%s\",\n", buf);
+
+            ts = *localtime(&ctime);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ts);
+            printf("    \"statusChangeTime\": \"%s\"\n", buf);
+        } // end if
         else {
-            if((int)size % 1073741824 == 0)
-                printf("%dG\n", ((int)size / 1073741824));
-            else
-                printf("%.2fG\n", (float)(size / 1073741824));
+            printf("    \"size\": \"%lu bytes\",\n", fileInfo.st_size);
+            printf("    \"accessTime\": \"%ld\",\n", fileInfo.st_atime);
+            printf("    \"modificationTime\": \"%ld\",\n", fileInfo.st_mtime);
+            printf("    \"statusChangeTime\": \"%ld\"\n", fileInfo.st_ctime);
         } // end else
 
-        // in strftime: might need to only be "%Y-%m-%d %H:%M:%S"
-        ts = *localtime(&atime);
-        strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
-        printf("Last Access Time: %s\n", buf);
-        
-        ts = *localtime(&mtime);
-        strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
-        printf("Last Modification Time: %s\n", buf);
-        
-        ts = *localtime(&ctime);
-        strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
-        printf("Last Status Change Time: %s\n\n", buf);
-    } // end else if
+        printf("  }\n");
+        printf("}\n\n");
+    } // end if
+    else {
+        printf("\nInformation for %s:\n", filePath);
+        printf("File Inode: %lu\n", fileInfo.st_ino);
+        printf("File Type: ");
+
+        if(S_ISREG(fileInfo.st_mode))
+            printf("regular file\n");
+        else if(S_ISDIR(fileInfo.st_mode))
+            printf("directory\n");
+        else if(S_ISCHR(fileInfo.st_mode))
+            printf("character device\n");
+        else if(S_ISBLK(fileInfo.st_mode))
+            printf("block device\n");
+        else if(S_ISFIFO(fileInfo.st_mode))
+            printf("FIFO (named pipe)\n");
+        else if(S_ISLNK(fileInfo.st_mode))
+            printf("symbolic link\n");
+        else if(S_ISSOCK(fileInfo.st_mode))
+            printf("socket\n");
+        else
+            printf("unknown?\n");
+
+        printf("File Permissions: ");
+        printPermissions(fileInfo);
+
+        printf("\nNumber of Hard Links: %lu\n", fileInfo.st_nlink);
+
+        printf("File Owner User ID: %d\n", fileInfo.st_uid);
+        printf("File Owner Group ID: %d\n", fileInfo.st_gid);
+
+        if(hFlag == 0) {
+            printf("File Size: %lu bytes\n", fileInfo.st_size);
+            printf("Last Access Time: %ld\n", fileInfo.st_atime);
+            printf("Last Modification Time: %ld\n", fileInfo.st_mtime);
+            printf("Last Status Change Time: %ld\n\n", fileInfo.st_ctime);
+        } // end if
+        else{
+            float size = fileInfo.st_size;
+
+            time_t atime = fileInfo.st_atime;
+            time_t mtime = fileInfo.st_mtime;
+            time_t ctime = fileInfo.st_ctime;
+            struct tm ts;
+            char buf[80];
+
+            printf("File Size: ");
+            if(size < 1024)
+                printf("%0.0f bytes\n", size);
+            else if(size >= 1024 && size < 1048576) {
+                if((int)size % 1024 == 0)
+                    printf("%dK\n", ((int)size / 1024));
+                else
+                    printf("%.2fK\n",(float)(size / 1024));
+            } // end else if
+            else if(size >= 1048576 && size < 1073741824) {
+                if((int)size % 1048576 == 0)
+                    printf("%dM\n", ((int)size / 1048576));
+                else
+                    printf("%.2fM\n", (float)(size / 1048576));
+            } // end else if
+            else {
+                if((int)size % 1073741824 == 0)
+                    printf("%dG\n", ((int)size / 1073741824));
+                else
+                    printf("%.2fG\n", (float)(size / 1073741824));
+            } // end else
+
+            ts = *localtime(&atime);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ts);
+            printf("Last Access Time: %s\n", buf);
+
+            ts = *localtime(&mtime);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ts);
+            printf("Last Modification Time: %s\n", buf);
+
+            ts = *localtime(&ctime);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ts);
+            printf("Last Status Change Time: %s\n\n", buf);
+        } // end else if
+    } // end else
+
 } // end dispInodeInfo
 
 void printPermissions(struct stat fileInfo) { 
     /*
     // directory
     if(S_ISDIR(fileInfo.st_mode))
-        printf("d");
+    printf("d");
     else
-        printf("-");
+    printf("-");
     */
     // owner read
     if(S_IRUSR & fileInfo.st_mode)
@@ -307,7 +385,7 @@ void printPermissions(struct stat fileInfo) {
     else
         printf("-");
 
-    printf("\n");
+    //printf("\n");
 } // end printPermissions
 
 void dispHelpInfo(char *args[]) {
