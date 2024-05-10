@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
         // Error check if error closing fd 
         if(close(fd) == -1) {
-            fprintf(stderr, "\nError closing file descriptor %d\n\n", fd, strerror(errno));
+            fprintf(stderr, "\nError closing file descriptor %d\n\n", fd);
             return 1;
         } // end if
     } // end if
@@ -117,6 +117,7 @@ int main(int argc, char *argv[]) {
             // Display inode info if aFlag is not set
             if(aFlag == 0) {
                 dispInodeInfo(fileInfo, argv[2]);
+                printf("\n");
             } // end if
             
             // Error check if aFlag and iFlag are both set
@@ -173,6 +174,7 @@ int main(int argc, char *argv[]) {
             // Display inode info if aFlag is not set
             if(aFlag == 0) {
                 dispInodeInfo(fileInfo, argv[1]);
+                printf("\n");
             } // end if
         } // end if
 
@@ -227,21 +229,43 @@ void dispInodeAll(struct stat fileInfo, char dirPath[]) {
                 // If current file is a directory, display inode info and call dispInodeAll() with new directory
                 if(S_ISDIR(fileInfo.st_mode)) {
                     dispInodeInfo(fileInfo, temp);
+                    
+                    // Output formatting
+                    if(jsonFlag == 0)
+                        printf("\n");
+                    else {
+                        if(nextDP != NULL)
+                            printf(",\n");
+                        else
+                            printf("\n");
+                    } // end else
+
                     dispInodeAll(fileInfo, temp);
+
+                    // Output formatting
+                    if(jsonFlag == 0)
+                        printf("\n");
+                    else {
+                        if(nextDP != NULL)
+                            printf(",\n");
+                        else
+                            printf("\n");
+                    } // end else
                 } // end if
+                
                 // Else, display inode info
                 else {
                     dispInodeInfo(fileInfo, temp);
-                } // end else
-                
-                // Output formatting
-                if(jsonFlag == 0)
-                    printf("\n");
-                else {
-                    if(nextDP != NULL)
-                        printf(",\n");
-                    else
+                                
+                    // Output formatting
+                    if(jsonFlag == 0)
                         printf("\n");
+                    else {
+                        if(nextDP != NULL)
+                            printf(",\n");
+                        else
+                            printf("\n");
+                    } // end else
                 } // end else
 
                 // Free memory occupied by temp
